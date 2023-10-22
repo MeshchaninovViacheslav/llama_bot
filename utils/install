@@ -1,0 +1,4 @@
+pip install langchain
+pip install langchain[llms]
+pip install llama-cpp-python
+pip install -U sentence-transformers
