@@ -17,7 +17,8 @@ def forward_with_cond_scale(
         null_logits = unet.forward(*args, text_cond_drop_prob = 1., image_cond_drop_prob = 1, **kwargs)
         return null_logits + (logits - null_logits) * cond_scale
 
-def step_dif(img, decoder, unet, alpha, alpha_next, time, batch, device, image_embed, text_encodings, cond_scale, lowres_cond_img, lowres_noise_level, noise_scheduler):
+def step_dif(img, decoder, unet, alpha, alpha_next, time, batch, device, 
+            image_embed, text_encodings, cond_scale, lowres_cond_img, lowres_noise_level, noise_scheduler):
     time_cond = torch.full((batch,), time, device=device, dtype = torch.long)
     
     with torch.autocast(device_type='cuda', dtype=torch.float16): 

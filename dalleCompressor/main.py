@@ -5,6 +5,7 @@ from dalle_init import decoder_init
 from utils import read_image, PSNR
 from predict_latent import generate_latent
 from diffusion_model import generate
+from optimize_condition import optimize
 
 
 class LatentModel:
@@ -54,7 +55,11 @@ class LatentModel:
 
         latent, _ = generate_latent(target_image, self.decoder, cond_image, cond_image, text_prompt)
 
-        pred_image = generate(self.decoder, cond_image, cond_image, text_prompt, latent)
+        latent = torch.nn.functional.interpolate(latent, size=(64, 64), mode="area")
+        init_image = torch.nn.functional.interpolate(latent, size=(256, 256), mode="area")
+
+        _, learn_image = optimize(self.decoder, text_prompt, init_image, target_image, cond_image)
+        pred_image = generate(self.decoder, learn_image, learn_image, text_prompt, init_image)
         pred_image = pred_image.permute(0, 2, 3, 1).cpu().numpy()
 
         result = {
