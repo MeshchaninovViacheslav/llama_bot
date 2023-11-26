@@ -11,6 +11,7 @@ from optimize_condition import optimize
 class LatentModel:
     def __init__(self, decoder_path):
         self.decoder = decoder_init(decoder_path)
+        self.latent_size = 64
 
 
     def fit(self, image_path, text_prompt=""):
@@ -47,26 +48,29 @@ class LatentModel:
     def fit_predict(self, image_path, text_prompt="", psnr_need=True):
         image_256 = [read_image(path=image_path, size=256)]
         image_64 = [read_image(path=image_path, size=64)]
+        image_128 = [read_image(path=image_path, size=64)]
 
-        cond_image = torch.tensor(image_64, dtype=torch.float32).permute(0, 3, 1, 2).cuda()
+        cond_image = torch.tensor(image_128, dtype=torch.float32).permute(0, 3, 1, 2).cuda()
         target_image = torch.tensor(image_256, dtype=torch.float32).permute(0, 3, 1, 2).cuda()
 
         text_prompt = [text_prompt]
 
-        latent, _ = generate_latent(target_image, self.decoder, cond_image, cond_image, text_prompt)
+        latent, _ = generate_latent(target_image, self.decoder, cond_image, text_prompt)
 
-        latent = torch.nn.functional.interpolate(latent, size=(64, 64), mode="area")
+        latent = torch.nn.functional.interpolate(latent, size=(self.latent_size, self.latent_size), mode="area")
         init_image = torch.nn.functional.interpolate(latent, size=(256, 256), mode="area")
 
-        _, learn_image = optimize(self.decoder, text_prompt, init_image, target_image, cond_image)
-        pred_image = generate(self.decoder, learn_image, learn_image, text_prompt, init_image)
+        learn_cond_image = optimize(self.decoder, text_prompt, init_image, target_image, cond_image)
+        pred_image = generate(self.decoder, learn_cond_image, text_prompt, init_image)
         pred_image = pred_image.permute(0, 2, 3, 1).cpu().numpy()
 
         result = {
             "pred_image": pred_image[0],
+            "condition": learn_cond_image[0],
             "latent": latent,
         }
         if psnr_need:
+            print(pred_image[0].mean())
             result["PSNR"] = PSNR(pred_image[0], image_256[0])
             print("PSNR = ", result["PSNR"])
 
